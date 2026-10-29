@@ -82,11 +82,11 @@
 
 	<!-- Mobile Sidebar Drawer Overlay -->
 	<Drawer bind:open={isMobileMenuOpen}>
-		<DrawerContent class="w-full max-w-none p-0 border-t max-h-[85vh]">
-			<DrawerHeader class="border-b px-4 py-3">
+		<DrawerContent class="w-full max-w-none p-0 border-t">
+			<DrawerHeader class="shrink-0 border-b px-4 pb-4">
 				<DrawerTitle class="text-left text-base">Menu Navigasi Lab</DrawerTitle>
 			</DrawerHeader>
-			<div class="w-full overflow-y-auto">
+			<div class="w-full min-h-0 flex-1 overflow-y-auto">
 				<AppSidebar selected={currentMethod} onSelect={handleSelectMethod} />
 			</div>
 		</DrawerContent>

@@ -149,7 +149,7 @@
 
 	<!-- Desktop: resizable two-column calculator -->
 	<Card class="hidden md:block border shadow-sm overflow-hidden">
-		<ResizablePaneGroup direction="horizontal" class="min-h-[420px] w-full rounded-lg border">
+		<ResizablePaneGroup direction="horizontal" class="min-h-105 w-full rounded-lg border">
 			<ResizablePane defaultSize={35} minSize={25} maxSize={50} class="p-4 bg-card border-r">
 				{@render inputFields()}
 			</ResizablePane>

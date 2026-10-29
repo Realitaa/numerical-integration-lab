@@ -212,7 +212,7 @@
 
 	<Card class="border shadow-sm">
 		<CardContent class="p-4">
-			<div class="h-[360px] w-full">
+			<div class="h-90 w-full">
 				<Line data={chartData} {options} />
 			</div>
 		</CardContent>

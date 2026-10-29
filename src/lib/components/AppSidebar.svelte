@@ -9,9 +9,10 @@
 		DrawerTitle,
 		DrawerTrigger,
 	} from '$lib/components/ui/drawer';
-	import { HelpCircle } from '@lucide/svelte';
+	import { CircleQuestionMark } from '@lucide/svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import type { MethodType } from '$lib/types';
+  import { ScrollArea } from "$lib/components/ui/scroll-area/index.js";
 
 	interface Props {
 		selected: MethodType;
@@ -55,35 +56,48 @@
 		<span class="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 block">Bantuan & Informasi</span>
 		<Drawer>
 			<DrawerTrigger class={buttonVariants({ variant: 'outline', class: 'w-full justify-start' })}>
-				<HelpCircle class="mr-2 h-4 w-4" />
+				<CircleQuestionMark class="mr-2 h-4 w-4" />
 				Tentang Aplikasi
 			</DrawerTrigger>
-			<DrawerContent>
+			<DrawerContent class="w-full max-w-2xl mx-auto max-h-[85vh]">
 				<DrawerHeader class="border-b p-4">
 					<DrawerTitle>Lab Integrasi Numerik</DrawerTitle>
 					<DrawerDescription>
 						Aplikasi web interaktif untuk mempelajari dan menguji metode-metode integrasi numerik.
 					</DrawerDescription>
 				</DrawerHeader>
-				<div class="p-6 space-y-4 text-sm max-w-2xl mx-auto leading-relaxed">
-					<p>
-						Aplikasi ini dirancang untuk membantu memahami empat metode integrasi numerik klasik
-						dalam menghitung pendekatan nilai integral tentu:
-					</p>
-					<ul class="list-disc list-inside space-y-1.5 text-muted-foreground">
-						<li><strong>Metode Trapesium</strong> — Mengaproksimasi luas daerah menggunakan trapesium linear.</li>
-						<li><strong>Metode Simpson 1/3</strong> — Menggunakan kurva parabola kuadratik, membutuhkan jumlah subinterval (n) genap.</li>
-						<li><strong>Metode Simpson 3/8</strong> — Menggunakan kurva kubik, membutuhkan n kelipatan 3.</li>
-						<li><strong>Metode Titik Tengah</strong> — Menggunakan penjumlahan persegi panjang Riemann berbasis titik tengah.</li>
-					</ul>
-					<p>
-						Pilih metode dari sidebar, tentukan batas integrasi dan fungsi, lalu amati langkah-langkah
-						perhitungan matematis secara otomatis beserta visualisasi grafik interaktifnya.
-					</p>
-					<p>
-						Anda juga dapat melihat dan mempelajari implementasi kode program dalam bahasa Python,
-						JavaScript, Java, dan C++.
-					</p>
+				<div class="min-h-0 pl-6 pr-4 pb-6 text-sm leading-relaxed">
+					<ScrollArea class="h-[calc(85vh-9rem)] w-full">
+						<div class="max-w-2xl mx-auto space-y-4 pr-1 pb-4">
+  						<p>
+  							Aplikasi ini dirancang untuk membantu memahami empat metode integrasi numerik klasik
+  							dalam menghitung pendekatan nilai integral tentu:
+  						</p>
+  						<ul class="list-disc list-inside space-y-1.5 text-muted-foreground">
+  							<li><strong>Metode Trapesium</strong> — Mengaproksimasi luas daerah menggunakan trapesium linear.</li>
+  							<li><strong>Metode Simpson 1/3</strong> — Menggunakan kurva parabola kuadratik, membutuhkan jumlah subinterval (n) genap.</li>
+  							<li><strong>Metode Simpson 3/8</strong> — Menggunakan kurva kubik, membutuhkan n kelipatan 3.</li>
+  							<li><strong>Metode Titik Tengah</strong> — Menggunakan penjumlahan persegi panjang Riemann berbasis titik tengah.</li>
+  						</ul>
+  						<p>
+  							Pilih metode dari sidebar, tentukan batas integrasi dan fungsi, lalu amati langkah-langkah
+  							perhitungan matematis secara otomatis beserta visualisasi grafik interaktifnya.
+  						</p>
+  						<p>
+  							Anda juga dapat melihat dan mempelajari implementasi kode program dalam bahasa Python,
+  							JavaScript, Java, dan C++.
+  						</p>
+  						<p>
+  							Website ini dibangun oleh kelompok 7 yang mengambil judul <strong>Integrasi Numerik</strong> pada mata kuliah Metode Numerik yang beranggotakan:
+  						</p>
+  						<ul class="list-disc list-inside space-y-1.5 text-muted-foreground">
+  							<li><strong>ANNISA NURUL HAYATI</strong> (4253250069)</li>
+  							<li><strong>MARIMAR SITUMEANG</strong> (4252250010)</li>
+  							<li><strong>MUTIARA CHALISTA TARIGAN</strong> (4252550009)</li>
+  							<li><strong>REZA MULIA PUTRA</strong> (4251250010)</li>
+  						</ul>
+						</div>
+					</ScrollArea>
 				</div>
 			</DrawerContent>
 		</Drawer>

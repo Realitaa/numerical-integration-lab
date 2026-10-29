@@ -1,11 +1,5 @@
 <script lang="ts">
-	import { buttonVariants } from '$lib/components/ui/button';
-	import {
-		DropdownMenu,
-		DropdownMenuContent,
-		DropdownMenuItem,
-		DropdownMenuTrigger,
-	} from '$lib/components/ui/dropdown-menu';
+	import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
 	import { Sun, Moon, Monitor } from '@lucide/svelte';
 	import { initTheme, saveTheme, type Theme } from '$lib/stores';
 
@@ -17,31 +11,23 @@
 	}
 </script>
 
-<DropdownMenu>
-	<DropdownMenuTrigger class={buttonVariants({ variant: 'outline' })}>
-		<div class="flex items-center gap-2">
-			{#if theme === 'dark'}
-				<Moon class="h-4 w-4" />
-			{:else if theme === 'system'}
-				<Monitor class="h-4 w-4" />
-			{:else}
-				<Sun class="h-4 w-4" />
-			{/if}
-			<span class="capitalize">{theme}</span>
-		</div>
-	</DropdownMenuTrigger>
-	<DropdownMenuContent align="end" class="w-[140px]">
-		<DropdownMenuItem onclick={() => handleSetTheme('light')}>
-			<Sun class="mr-2 h-4 w-4" />
-			Light
-		</DropdownMenuItem>
-		<DropdownMenuItem onclick={() => handleSetTheme('dark')}>
-			<Moon class="mr-2 h-4 w-4" />
-			Dark
-		</DropdownMenuItem>
-		<DropdownMenuItem onclick={() => handleSetTheme('system')}>
-			<Monitor class="mr-2 h-4 w-4" />
-			System
-		</DropdownMenuItem>
-	</DropdownMenuContent>
-</DropdownMenu>
+<Tabs
+	value={theme}
+	onValueChange={(value) => handleSetTheme(value as Theme)}
+	class="w-full"
+>
+	<TabsList class="grid w-full grid-cols-3" aria-label="Pilih tema">
+		<TabsTrigger value="light" class="gap-1.5 px-2 text-xs" aria-label="Tema terang">
+			<Sun class="h-3.5 w-3.5" />
+			<span>Terang</span>
+		</TabsTrigger>
+		<TabsTrigger value="dark" class="gap-1.5 px-2 text-xs" aria-label="Tema gelap">
+			<Moon class="h-3.5 w-3.5" />
+			<span>Gelap</span>
+		</TabsTrigger>
+		<TabsTrigger value="system" class="gap-1.5 px-2 text-xs" aria-label="Tema sistem">
+			<Monitor class="h-3.5 w-3.5" />
+			<span>Sistem</span>
+		</TabsTrigger>
+	</TabsList>
+</Tabs>
