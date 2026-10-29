@@ -1,47 +1,101 @@
-# Svelte + TS + Vite
+# Numerical Integration Lab 🧪📊
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+An interactive, modern web application designed to explore, calculate, and visualize numerical integration methods. Built with **Svelte 5**, **Tailwind CSS**, and **Shadcn-Svelte**.
 
-## Recommended IDE Setup
+---
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## ✨ Features
 
-## Need an official Svelte framework?
+- **Dynamic Reactive Navigation:** Seamlessly switch between different numerical integration methods using reactive URL query parameters (`/?method=trapezoid`, `/?method=simpson13`, `/?method=simpson38`, `/?method=midpoint`).
+- **Interactive Calculator (Resizable Panels):** 
+  - **Left Panel:** Input controls for functions ($x^2, \sin(x), e^x$, etc.), lower bound ($a$), upper bound ($b$), and number of subintervals ($n$).
+  - **Right Panel:** Live, step-by-step mathematical calculations rendered cleanly using `svelte-math`.
+- **Graphical Visualization:** Real-time chart rendering via `svelte-chartjs` and Chart.js, visualizing smooth original curves alongside geometric approximation shapes (trapezoids, midpoints, or parabolic segments) without external heavy plugins.
+- **Multi-Language Code Implementation Tabs:** Inspect production-ready code implementations in **Python, JavaScript, Java, and C++**, cleanly imported as raw assets via Vite (`?raw`).
+- **Theme Switcher:** Fully supports Light, Dark, and System modes with a customized pastel cyan-green aesthetic inspired by presentation slides.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+---
 
-## Technical considerations
+## 🛠️ Tech Stack
 
-**Why use this over SvelteKit?**
+- **Framework:** [Svelte 5](https://svelte.dev/) (Vite)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **UI Components:** [Shadcn-Svelte](https://www.shadcn-svelte.com/)
+- **Math Rendering:** `svelte-math`
+- **Charts:** `Chart.js` & `svelte-chartjs`
+- **Language:** TypeScript
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+---
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+## 📂 Project Structure
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+```text
+.
+├── src
+│   ├── App.svelte                # Main layout, router & query param state handler
+│   ├── app.css                   # Tailwind & custom CSS variables configuration
+│   ├── lib
+│   │   ├── components            # UI components (Sidebar, Calculator, Chart, etc.)
+│   │   ├── codes                 # Raw code implementations (?raw imports)
+│   │   │   ├── trapezoid/
+│   │   │   ├── simpson13/
+│   │   │   ├── simpson38/
+│   │   │   └── midpoint/
+│   │   ├── data                  # Method metadata, formulas, and theories
+│   │   └── mathUtils.ts          # Core numerical integration calculation logic
+│   └── main.ts
+├── package.json
+└── vite.config.ts
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
 ```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Make sure you have [Node.js](https://nodejs.org/) and a package manager like `pnpm`, `npm`, or `yarn` installed.
+
+### Installation & Run
+
+1. **Clone the repository:**
+```bash
+git clone [https://github.com/Realitaa/numerical-integration-lab.git](https://github.com/Realitaa/numerical-integration-lab.git)
+cd numerical-integration-lab
+
+```
+
+
+2. **Install dependencies:**
+```bash
+pnpm install
+# or npm install
+
+```
+
+
+3. **Run the development server:**
+```bash
+pnpm dev
+# or npm run dev
+
+```
+
+
+4. Open your browser and navigate to `http://localhost:5173` (or the port specified in your terminal).
+
+---
+
+## 📚 Covered Numerical Methods
+
+1. **Trapezoid Rule:** Approximates the area under the curve using linear interpolation (straight lines forming trapezoids).
+2. **Simpson's 1/3 Rule:** Uses quadratic polynomials (parabolic segments) to approximate the curve, requiring an even number of subintervals ($n$).
+3. **Simpson's 3/8 Rule:** Utilizes cubic interpolation requiring subintervals divisible by 3 for higher accuracy.
+4. **Midpoint Rule:** Approximates the integral using rectangular blocks evaluated at the midpoint of each subinterval.
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. Feel free to use this project for educational purposes or academic references.
