@@ -39,5 +39,9 @@
     "@ariefsn/svelte-use": "^1.2.1",
     "chart.js": "^4.6.1",
     "svelte-chartjs": "^4.0.1"
-  }
+  },
+  "engines": {
+    "node": "26.13.0"
+  },
+  "packageManager": "pnpm@12.21.0"
 }
