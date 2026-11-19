@@ -1,502 +1,203 @@
-import type { FunctionType, MathFunction, ComputationResult, StepDetail, SubInterval } from './types';
+import type { FunctionType, ComputationResult, StepDetail, SubInterval, MethodType } from './types';
+import { functionRegistry, functionList, getFunction, getFunctionName, getFunctionDefinition, validateFunctionInterval, isFunctionAllowedForMethod, isRegisteredMethod } from './functionRegistry';
 
-// Function definition registry
-export const functionList: MathFunction[] = [
-	{ id: 'x^2', label: 'x²', description: 'f(x) = x^2' },
-	{ id: 'sin(x)', label: 'sin(x)', description: 'f(x) = sin(x)' },
-	{ id: 'e^x', label: 'eˣ', description: 'f(x) = e^x' },
-	{ id: '1/x', label: '1/x', description: 'f(x) = 1/x' },
-	{ id: 'sqrt(x)', label: '√x', description: 'f(x) = sqrt(x)' },
-];
+export { functionList, getFunction, getFunctionName };
 
-export function getFunction(fn: FunctionType): (x: number) => number {
-	switch (fn) {
-		case 'x^2':
-			return (x) => x * x;
-		case 'sin(x)':
-			return (x) => Math.sin(x);
-		case 'e^x':
-			return (x) => Math.exp(x);
-		case '1/x':
-			return (x) => 1 / x;
-		case 'sqrt(x)':
-			return (x) => Math.sqrt(x);
-		default:
-			return (x) => x * x;
-	}
+function assertFiniteBounds(a: number, b: number): void {
+	if (!Number.isFinite(a) || !Number.isFinite(b)) throw new RangeError('Integration bounds a and b must be finite numbers.');
 }
 
-export function getFunctionName(fn: FunctionType): string {
-	switch (fn) {
-		case 'x^2':
-			return 'x^2';
-		case 'sin(x)':
-			return '\\sin(x)';
-		case 'e^x':
-			return 'e^x';
-		case '1/x':
-			return '\\frac{1}{x}';
-		case 'sqrt(x)':
-			return '\\sqrt{x}';
-		default:
-			return 'x^2';
-	}
+function assertValidN(n: number, method: MethodType): void {
+	if (!Number.isFinite(n) || !Number.isInteger(n)) throw new RangeError('n must be a finite integer.');
+	const min = method === 'simpson13' ? 2 : method === 'simpson38' ? 3 : 1;
+	if (n < min) throw new RangeError(`${method} requires n >= ${min}.`);
+	if (method === 'simpson13' && n % 2 !== 0) throw new RangeError('Simpson 1/3 requires an even n.');
+	if (method === 'simpson38' && n % 3 !== 0) throw new RangeError('Simpson 3/8 requires n to be a multiple of 3.');
 }
 
-// High-precision integration for exact value using Simpson's rule with many intervals
-export function simpsonExact(fn: (x: number) => number, a: number, b: number, n: number = 10000): number {
-	if (n % 2 !== 0) n++;
+function checkedEvaluator(fn: (x: number) => number): (x: number) => number {
+	return (x) => {
+		const value = fn(x);
+		if (!Number.isFinite(value)) throw new RangeError(`Function returned a non-finite value at x=${x}.`);
+		return value;
+	};
+}
+
+function validateRuleInputs(fn: (x: number) => number, a: number, b: number, n: number, method: MethodType): (x: number) => number {
+	assertFiniteBounds(a, b);
+	assertValidN(n, method);
+	return checkedEvaluator(fn);
+}
+
+export function trapezoidRule(fn: (x: number) => number, a: number, b: number, n: number): { approximation: number; stepDetails: StepDetail[]; h: number } {
+	const f = validateRuleInputs(fn, a, b, n, 'trapezoid');
 	const h = (b - a) / n;
-	let sum = fn(a) + fn(b);
-	for (let i = 1; i < n; i++) {
-		const x = a + i * h;
-		sum += i % 2 === 0 ? 2 * fn(x) : 4 * fn(x);
+	const nodes = Array.from({ length: n + 1 }, (_, i) => a + i * h);
+	const values = nodes.map(f);
+	const stepDetails = Array.from({ length: n }, (_, i) => ({
+		index: i, a: nodes[i], b: nodes[i + 1], yA: values[i], yB: values[i + 1],
+		contribution: (h / 2) * (values[i] + values[i + 1]), approximate: true,
+	}));
+	const weightedSum = values[0] / 2 + values.slice(1, -1).reduce((sum, value) => sum + value, 0) + values[n] / 2;
+	return { approximation: h * weightedSum, stepDetails, h };
+}
+
+export function simpson13Rule(fn: (x: number) => number, a: number, b: number, n: number): { approximation: number; stepDetails: StepDetail[]; h: number } {
+	const f = validateRuleInputs(fn, a, b, n, 'simpson13');
+	const h = (b - a) / n;
+	const values = Array.from({ length: n + 1 }, (_, i) => f(a + i * h));
+	let sum = values[0] + values[n];
+	for (let i = 1; i < n; i++) sum += (i % 2 === 0 ? 2 : 4) * values[i];
+	const stepDetails = [];
+	for (let i = 0; i < n; i += 2) {
+		const x0 = a + i * h, x1 = a + (i + 1) * h, x2 = a + (i + 2) * h;
+		stepDetails.push({
+			index: i / 2, a: x0, b: x2, yA: values[i], yB: values[i + 2],
+			interiorPoints: [{ x: x1, y: values[i + 1], weight: 4 }],
+			contribution: (h / 3) * (values[i] + 4 * values[i + 1] + values[i + 2]), approximate: true,
+		});
 	}
+	return { approximation: (h / 3) * sum, stepDetails, h };
+}
+
+export function simpson38Rule(fn: (x: number) => number, a: number, b: number, n: number): { approximation: number; stepDetails: StepDetail[]; h: number } {
+	const f = validateRuleInputs(fn, a, b, n, 'simpson38');
+	const h = (b - a) / n;
+	const values = Array.from({ length: n + 1 }, (_, i) => f(a + i * h));
+	let sum = values[0] + values[n];
+	for (let i = 1; i < n; i++) sum += (i % 3 === 0 ? 2 : 3) * values[i];
+	const stepDetails = [];
+	for (let i = 0; i < n; i += 3) {
+		const x0 = a + i * h, x1 = a + (i + 1) * h, x2 = a + (i + 2) * h, x3 = a + (i + 3) * h;
+		stepDetails.push({
+			index: i / 3, a: x0, b: x3, yA: values[i], yB: values[i + 3],
+			interiorPoints: [{ x: x1, y: values[i + 1], weight: 3 }, { x: x2, y: values[i + 2], weight: 3 }],
+			contribution: (3 * h / 8) * (values[i] + 3 * values[i + 1] + 3 * values[i + 2] + values[i + 3]), approximate: true,
+		});
+	}
+	return { approximation: (3 * h / 8) * sum, stepDetails, h };
+}
+
+export function midpointRule(fn: (x: number) => number, a: number, b: number, n: number): { approximation: number; stepDetails: StepDetail[]; h: number } {
+	const f = validateRuleInputs(fn, a, b, n, 'midpoint');
+	const h = (b - a) / n;
+	const stepDetails = Array.from({ length: n }, (_, i) => {
+		const x0 = a + i * h, x1 = a + (i + 1) * h, xMid = (x0 + x1) / 2;
+		const yMid = f(xMid);
+		return { index: i, a: x0, b: x1, yA: f(x0), yB: f(x1), xMid, yMid, contribution: h * yMid, approximate: true };
+	});
+	return { approximation: stepDetails.reduce((sum, step) => sum + step.contribution, 0), stepDetails, h };
+}
+
+export function absoluteError(approximation: number, referenceValue: number): number {
+	if (!Number.isFinite(approximation) || !Number.isFinite(referenceValue)) throw new RangeError('Approximation and reference value must be finite.');
+	return Math.abs(approximation - referenceValue);
+}
+
+export function relativeError(approximation: number, referenceValue: number): number | null {
+	if (!Number.isFinite(approximation) || !Number.isFinite(referenceValue)) throw new RangeError('Approximation and reference value must be finite.');
+	return referenceValue === 0 ? null : absoluteError(approximation, referenceValue) / Math.abs(referenceValue);
+}
+
+export function simpsonExact(fn: (x: number) => number, a: number, b: number, n = 10000): number {
+	assertFiniteBounds(a, b);
+	if (!Number.isInteger(n) || n < 2 || !Number.isFinite(n)) throw new RangeError('Simpson reference n must be a finite integer >= 2.');
+	if (n % 2 !== 0) n++;
+	const f = checkedEvaluator(fn), h = (b - a) / n;
+	let sum = f(a) + f(b);
+	for (let i = 1; i < n; i++) sum += (i % 2 === 0 ? 2 : 4) * f(a + i * h);
 	return (h / 3) * sum;
 }
 
-// Adaptive Simpson's rule for a more accurate reference value
-export function adaptiveSimpson(fn: (x: number) => number, a: number, b: number, tolerance: number = 1e-10): number {
-	const simpson = (ll: number, rr: number): number => {
-		const m = (ll + rr) / 2;
-		return ((rr - ll) / 6) * (fn(ll) + 4 * fn(m) + fn(rr));
+export function adaptiveSimpson(fn: (x: number) => number, a: number, b: number, tolerance = 1e-10): number {
+	assertFiniteBounds(a, b);
+	if (!Number.isFinite(tolerance) || tolerance <= 0) throw new RangeError('Tolerance must be a finite positive number.');
+	const f = checkedEvaluator(fn);
+	if (a === b) return 0;
+	const simpson = (left: number, right: number) => ((right - left) / 6) * (f(left) + 4 * f((left + right) / 2) + f(right));
+	const recurse = (left: number, right: number, whole: number, tol: number, depth: number): number => {
+		const middle = (left + right) / 2, leftEstimate = simpson(left, middle), rightEstimate = simpson(middle, right);
+		const delta = leftEstimate + rightEstimate - whole;
+		if (Math.abs(delta) <= 15 * tol || depth === 0) return leftEstimate + rightEstimate + delta / 15;
+		return recurse(left, middle, leftEstimate, tol / 2, depth - 1) + recurse(middle, right, rightEstimate, tol / 2, depth - 1);
 	};
-
-	const recurse = (ll: number, rr: number, s: number): number => {
-		const m = (ll + rr) / 2;
-		const left = simpson(ll, m);
-		const right = simpson(m, rr);
-		if (Math.abs(left + right - s) < tolerance) return left + right;
-		return recurse(ll, m, left) + recurse(m, rr, right);
-	};
-
-	return recurse(a, b, simpson(a, b));
+	return recurse(a, b, simpson(a, b), tolerance, 30);
 }
 
-// Trapezoid Rule
-export function trapezoidRule(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { approximation: number; stepDetails: StepDetail[]; h: number } {
-	const h = (b - a) / n;
-	let sum = (fn(a) + fn(b)) / 2;
-	const stepDetails: StepDetail[] = [];
-
-	for (let i = 0; i < n; i++) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		const contribution = (y0 + y1) / 2;
-		sum += (i === 0 ? 0 : 0); // already counted endpoints
-		stepDetails.push({
-			index: i,
-			a: x0,
-			b: x1,
-			yA: y0,
-			yB: y1,
-			contribution,
-			approximate: true,
-		});
+export function computeIntegration(method: MethodType, fn: FunctionType, a: number, b: number, n: number): ComputationResult {
+	if (!isRegisteredMethod(method)) throw new Error(`Unknown integration method: ${method}`);
+	const definition = getFunctionDefinition(fn);
+	if (!isFunctionAllowedForMethod(method, fn)) {
+		throw new RangeError(`Function ${fn} is not allowed for method ${method}.`);
 	}
-
-	// Recompute sum properly
-	sum = (fn(a) + fn(b)) / 2;
-	for (let i = 1; i < n; i++) {
-		sum += fn(a + i * h);
-	}
-	const approximation = h * sum;
-
-	// Recompute step contributions with correct formula
-	stepDetails.length = 0;
-	for (let i = 0; i < n; i++) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		stepDetails.push({
-			index: i,
-			a: x0,
-			b: x1,
-			yA: y0,
-			yB: y1,
-			contribution: h * (y0 + y1) / 2,
-			approximate: true,
-		});
-	}
-
-	return { approximation, stepDetails, h };
-}
-
-// Simpson's 1/3 Rule
-export function simpson13Rule(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { approximation: number; stepDetails: StepDetail[]; h: number } {
-	const h = (b - a) / n;
-	let sum = fn(a) + fn(b);
-	const stepDetails: StepDetail[] = [];
-
-	for (let i = 1; i < n; i++) {
-		const x = a + i * h;
-		sum += i % 2 === 0 ? 2 * fn(x) : 4 * fn(x);
-	}
-
-	const approximation = (h / 3) * sum;
-
-	// Step details for pairs (each pair of subintervals forms a parabola)
-	for (let i = 0; i < n; i += 2) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const x2 = a + (i + 2) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		const y2 = fn(x2);
-		stepDetails.push({
-			index: i / 2,
-			a: x0,
-			b: x2,
-			yA: y0,
-			yB: y2,
-			contribution: (h / 3) * (y0 + 4 * y1 + y2),
-			approximate: true,
-		});
-	}
-
-	return { approximation, stepDetails, h };
-}
-
-// Simpson's 3/8 Rule
-export function simpson38Rule(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { approximation: number; stepDetails: StepDetail[]; h: number } {
-	const h = (b - a) / n;
-	let sum = fn(a) + fn(b);
-	const stepDetails: StepDetail[] = [];
-
-	for (let i = 1; i < n; i++) {
-		const x = a + i * h;
-		sum += i % 3 === 0 ? 2 * fn(x) : 3 * fn(x);
-	}
-
-	const approximation = (3 * h) / 8 * sum;
-
-	// Step details for triplets (each triplet of subintervals forms a parabola)
-	for (let i = 0; i < n; i += 3) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const x2 = a + (i + 2) * h;
-		const x3 = a + (i + 3) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		const y2 = fn(x2);
-		const y3 = fn(x3);
-		stepDetails.push({
-			index: i / 3,
-			a: x0,
-			b: x3,
-			yA: y0,
-			yB: y3,
-			contribution: (3 * h) / 8 * (y0 + 3 * y1 + 3 * y2 + y3),
-			approximate: true,
-		});
-	}
-
-	return { approximation, stepDetails, h };
-}
-
-// Midpoint Rule
-export function midpointRule(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { approximation: number; stepDetails: StepDetail[]; h: number } {
-	const h = (b - a) / n;
-	let sum = 0;
-	const stepDetails: StepDetail[] = [];
-
-	for (let i = 0; i < n; i++) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const mid = (x0 + x1) / 2;
-		const yMid = fn(mid);
-		const contribution = h * yMid;
-		sum += yMid;
-		stepDetails.push({
-			index: i,
-			a: x0,
-			b: x1,
-			yA: fn(x0),
-			yB: fn(x1),
-			contribution,
-			approximate: true,
-		});
-	}
-
-	const approximation = h * sum;
-
-	return { approximation, stepDetails, h };
-}
-
-// Main computation dispatcher
-export function computeIntegration(
-	method: 'trapezoid' | 'simpson13' | 'simpson38' | 'midpoint',
-	fn: FunctionType,
-	a: number,
-	b: number,
-	n: number
-): ComputationResult {
-	const f = getFunction(fn);
-	const needsEvenN = method === 'simpson13';
-
-	// Ensure valid n
-	let validN = n;
-	if (validN < 1) validN = 1;
-	if (method === 'simpson13' && validN % 2 !== 0) validN += 1;
-	if (method === 'simpson38' && validN % 3 !== 0) {
-		validN = Math.ceil(validN / 3) * 3;
-	}
-
-	let result: { approximation: number; stepDetails: StepDetail[]; h: number };
-
-	switch (method) {
-		case 'trapezoid':
-			result = trapezoidRule(f, a, b, validN);
-			break;
-		case 'simpson13':
-			result = simpson13Rule(f, a, b, validN);
-			break;
-		case 'simpson38':
-			result = simpson38Rule(f, a, b, validN);
-			break;
-		case 'midpoint':
-			result = midpointRule(f, a, b, validN);
-			break;
-		default:
-			result = trapezoidRule(f, a, b, validN);
-	}
-
-	// Compute exact value using adaptive Simpson with high precision
-	const exact = adaptiveSimpson(f, a, b);
-	const error = Math.abs(result.approximation - exact);
-	const relativeError = exact !== 0 ? error / Math.abs(exact) : 0;
-
+	validateFunctionInterval(fn, a, b);
+	assertValidN(n, method);
+	const evaluator = getFunction(fn);
+	const result = method === 'trapezoid' ? trapezoidRule(evaluator, a, b, n)
+		: method === 'simpson13' ? simpson13Rule(evaluator, a, b, n)
+			: method === 'simpson38' ? simpson38Rule(evaluator, a, b, n)
+				: method === 'midpoint' ? midpointRule(evaluator, a, b, n)
+					: (() => { throw new Error(`Unknown integration method: ${method}`); })();
+	const analyticValue = definition.integral?.(a, b) ?? null;
+	const referenceKind = analyticValue !== null && Number.isFinite(analyticValue) ? 'analytic' as const : 'numerical-estimate' as const;
+	const referenceValue = referenceKind === 'analytic' ? analyticValue as number : adaptiveSimpson(evaluator, a, b);
+	if (!Number.isFinite(referenceValue)) throw new RangeError('Reference integral could not be evaluated as a finite value.');
+	const error = absoluteError(result.approximation, referenceValue);
 	return {
-		method,
-		function: functionList.find((f) => f.id === fn) ?? functionList[0],
-		a,
-		b,
-		n: validN,
-		h: result.h,
-		exact,
-		approximation: result.approximation,
-		error,
-		relativeError,
-		stepDetails: result.stepDetails,
-		needsEvenN,
+		method, function: { id: fn, label: definition.label, description: definition.description }, a, b, n, h: result.h,
+		referenceValue, referenceKind, referenceMethod: referenceKind === 'analytic' ? 'Antiturunan analitik' : 'Adaptive Simpson (estimasi numerik)',
+		exact: referenceKind === 'analytic' ? referenceValue : null, approximation: result.approximation, error,
+		relativeError: relativeError(result.approximation, referenceValue), stepDetails: result.stepDetails, needsEvenN: method === 'simpson13',
 	};
 }
 
-// Generate points for plotting
-export function generatePlotPoints(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number,
-	method: 'trapezoid' | 'simpson13' | 'simpson38' | 'midpoint'
-): { smooth: SubInterval[]; approximation: SubInterval[] } {
-	const h = (b - a) / n;
-	const smooth: SubInterval[] = [];
-	const nSmooth = n * 50;
-	const hSmooth = (b - a) / nSmooth;
-	for (let i = 0; i <= nSmooth; i++) {
-		const x = a + i * hSmooth;
-		smooth.push({ x, y: fn(x) });
-	}
+function validatePlotInputs(fn: (x: number) => number, a: number, b: number, n: number, method: MethodType): (x: number) => number {
+	return validateRuleInputs(fn, a, b, n, method);
+}
 
+export function generatePlotPoints(fn: (x: number) => number, a: number, b: number, n: number, method: MethodType): { smooth: SubInterval[]; approximation: SubInterval[] } {
+	const f = validatePlotInputs(fn, a, b, n, method), h = (b - a) / n;
+	const smooth = Array.from({ length: n * 50 + 1 }, (_, i) => { const x = a + i * h / 50; return { x, y: f(x) }; });
 	const approximation: SubInterval[] = [];
-
-	switch (method) {
-		case 'trapezoid':
-			for (let i = 0; i <= n; i++) {
-				const x = a + i * h;
-				approximation.push({ x, y: fn(x) });
-			}
-			break;
-		case 'simpson13':
-			for (let i = 0; i <= n; i++) {
-				const x = a + i * h;
-				approximation.push({ x, y: fn(x) });
-			}
-			break;
-		case 'simpson38':
-			for (let i = 0; i <= n; i++) {
-				const x = a + i * h;
-				approximation.push({ x, y: fn(x) });
-			}
-			break;
-		case 'midpoint':
-			for (let i = 0; i < n; i++) {
-				const x0 = a + i * h;
-				const x1 = a + (i + 1) * h;
-				const mid = (x0 + x1) / 2;
-				approximation.push({ x: x0, y: fn(mid) });
-				approximation.push({ x: x1, y: fn(mid) });
-			}
-			break;
-	}
-
+	if (method === 'midpoint') {
+		for (let i = 0; i < n; i++) { const x0 = a + i * h, x1 = a + (i + 1) * h, y = f((x0 + x1) / 2); approximation.push({ x: x0, y }, { x: x1, y }); }
+	} else for (let i = 0; i <= n; i++) { const x = a + i * h; approximation.push({ x, y: f(x) }); }
 	return { smooth, approximation };
 }
 
-// Generate trapezoid-specific points for chart fill
-export function generateTrapezoidPoints(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
-	const h = (b - a) / n;
-	const smooth: SubInterval[] = [];
-	const nSmooth = n * 50;
-	const hSmooth = (b - a) / nSmooth;
-	for (let i = 0; i <= nSmooth; i++) {
-		const x = a + i * hSmooth;
-		smooth.push({ x, y: fn(x) });
-	}
-
-	const fillPoints: SubInterval[] = [];
-	for (let i = 0; i <= n; i++) {
-		const x = a + i * h;
-		fillPoints.push({ x, y: fn(x) });
-	}
-
-	return { smooth, fillPoints };
+export function generateTrapezoidPoints(fn: (x: number) => number, a: number, b: number, n: number): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
+	const points = generatePlotPoints(fn, a, b, n, 'trapezoid');
+	return { smooth: points.smooth, fillPoints: points.approximation };
 }
 
-// Generate Simpson 1/3 parabolic segments
-export function generateSimpson13Points(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
-	const h = (b - a) / n;
-	const smooth: SubInterval[] = [];
-	const nSmooth = n * 50;
-	const hSmooth = (b - a) / nSmooth;
-	for (let i = 0; i <= nSmooth; i++) {
-		const x = a + i * hSmooth;
-		smooth.push({ x, y: fn(x) });
-	}
-
-	// Generate parabolic arc points for each pair of subintervals
+export function generateSimpson13Points(fn: (x: number) => number, a: number, b: number, n: number): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
+	const f = validatePlotInputs(fn, a, b, n, 'simpson13'), h = (b - a) / n;
+	const smooth = Array.from({ length: n * 50 + 1 }, (_, i) => { const x = a + i * h / 50; return { x, y: f(x) }; });
 	const fillPoints: SubInterval[] = [];
 	for (let i = 0; i < n; i += 2) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const x2 = a + (i + 2) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		const y2 = fn(x2);
-
-		// Lagrange interpolation for parabola through 3 points
-		const parabolaY = (x: number): number => {
-			return y0 * ((x - x1) * (x - x2)) / ((x0 - x1) * (x0 - x2)) +
-				y1 * ((x - x0) * (x - x2)) / ((x1 - x0) * (x1 - x2)) +
-				y2 * ((x - x0) * (x - x1)) / ((x2 - x0) * (x2 - x1));
-		};
-
-		const nPoints = 30;
-		for (let j = 0; j <= nPoints; j++) {
-			const t = j / nPoints;
-			const x = x0 + t * (x2 - x0);
-			fillPoints.push({ x, y: parabolaY(x) });
-		}
+		const x0 = a + i * h, x1 = a + (i + 1) * h, x2 = a + (i + 2) * h;
+		const y0 = f(x0), y1 = f(x1), y2 = f(x2);
+		for (let j = 0; j <= 30; j++) { const x = x0 + (x2 - x0) * j / 30; const y = y0 * (x - x1) * (x - x2) / ((x0 - x1) * (x0 - x2)) + y1 * (x - x0) * (x - x2) / ((x1 - x0) * (x1 - x2)) + y2 * (x - x0) * (x - x1) / ((x2 - x0) * (x2 - x1)); fillPoints.push({ x, y }); }
 	}
-
 	return { smooth, fillPoints };
 }
 
-// Generate Simpson 3/8 parabolic segments
-export function generateSimpson38Points(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
-	const h = (b - a) / n;
-	const smooth: SubInterval[] = [];
-	const nSmooth = n * 50;
-	const hSmooth = (b - a) / nSmooth;
-	for (let i = 0; i <= nSmooth; i++) {
-		const x = a + i * hSmooth;
-		smooth.push({ x, y: fn(x) });
-	}
-
+export function generateSimpson38Points(fn: (x: number) => number, a: number, b: number, n: number): { smooth: SubInterval[]; fillPoints: SubInterval[] } {
+	const f = validatePlotInputs(fn, a, b, n, 'simpson38'), h = (b - a) / n;
+	const smooth = Array.from({ length: n * 50 + 1 }, (_, i) => { const x = a + i * h / 50; return { x, y: f(x) }; });
 	const fillPoints: SubInterval[] = [];
 	for (let i = 0; i < n; i += 3) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const x2 = a + (i + 2) * h;
-		const x3 = a + (i + 3) * h;
-		const y0 = fn(x0);
-		const y1 = fn(x1);
-		const y2 = fn(x2);
-		const y3 = fn(x3);
-
-		// Cubic interpolation for Simpson 3/8
-		const interpY = (x: number): number => {
-			// Lagrange cubic interpolation
-			return y0 * ((x - x1) * (x - x2) * (x - x3)) / ((x0 - x1) * (x0 - x2) * (x0 - x3)) +
-				y1 * ((x - x0) * (x - x2) * (x - x3)) / ((x1 - x0) * (x1 - x2) * (x1 - x3)) +
-				y2 * ((x - x0) * (x - x1) * (x - x3)) / ((x2 - x0) * (x2 - x1) * (x2 - x3)) +
-				y3 * ((x - x0) * (x - x1) * (x - x2)) / ((x3 - x0) * (x3 - x1) * (x3 - x2));
-		};
-
-		const nPoints = 40;
-		for (let j = 0; j <= nPoints; j++) {
-			const t = j / nPoints;
-			const x = x0 + t * (x3 - x0);
-			fillPoints.push({ x, y: interpY(x) });
-		}
+		const xs = [a + i * h, a + (i + 1) * h, a + (i + 2) * h, a + (i + 3) * h], ys = xs.map(f);
+		for (let j = 0; j <= 40; j++) { const x = xs[0] + (xs[3] - xs[0]) * j / 40; let y = 0; for (let k = 0; k < 4; k++) { let term = ys[k]; for (let m = 0; m < 4; m++) if (m !== k) term *= (x - xs[m]) / (xs[k] - xs[m]); y += term; } fillPoints.push({ x, y }); }
 	}
-
 	return { smooth, fillPoints };
 }
 
-// Generate Midpoint rectangle points
-export function generateMidpointPoints(
-	fn: (x: number) => number,
-	a: number,
-	b: number,
-	n: number
-): { smooth: SubInterval[]; fillPoints: { x: number; y: number; x0: number; x1: number }[] } {
-	const h = (b - a) / n;
-	const smooth: SubInterval[] = [];
-	const nSmooth = n * 50;
-	const hSmooth = (b - a) / nSmooth;
-	for (let i = 0; i <= nSmooth; i++) {
-		const x = a + i * hSmooth;
-		smooth.push({ x, y: fn(x) });
-	}
-
-	const fillPoints: { x: number; y: number; x0: number; x1: number }[] = [];
-	for (let i = 0; i < n; i++) {
-		const x0 = a + i * h;
-		const x1 = a + (i + 1) * h;
-		const mid = (x0 + x1) / 2;
-		const yMid = fn(mid);
-		fillPoints.push({ x: mid, y: yMid, x0, x1 });
-	}
-
+export function generateMidpointPoints(fn: (x: number) => number, a: number, b: number, n: number): { smooth: SubInterval[]; fillPoints: { x: number; y: number; x0: number; x1: number }[] } {
+	const f = validatePlotInputs(fn, a, b, n, 'midpoint'), h = (b - a) / n;
+	const smooth = Array.from({ length: n * 50 + 1 }, (_, i) => { const x = a + i * h / 50; return { x, y: f(x) }; });
+	const fillPoints = Array.from({ length: n }, (_, i) => { const x0 = a + i * h, x1 = a + (i + 1) * h, x = (x0 + x1) / 2; return { x, y: f(x), x0, x1 }; });
 	return { smooth, fillPoints };
 }
+
+export { functionRegistry, validateFunctionInterval };

@@ -1,6 +1,7 @@
 export type MethodType = 'trapezoid' | 'simpson13' | 'simpson38' | 'midpoint';
 
-export type FunctionType = 'x^2' | 'sin(x)' | 'e^x' | '1/x' | 'sqrt(x)';
+import type { FunctionType } from './functionRegistry';
+export type { FunctionType } from './functionRegistry';
 
 export interface MathFunction {
 	id: FunctionType;
@@ -19,6 +20,9 @@ export interface StepDetail {
 	b: number;
 	yA: number;
 	yB: number;
+	xMid?: number;
+	yMid?: number;
+	interiorPoints?: { x: number; y: number; weight: number }[];
 	contribution: number;
 	approximate: boolean;
 }
@@ -30,10 +34,13 @@ export interface ComputationResult {
 	b: number;
 	n: number;
 	h: number;
-	exact: number;
+	referenceValue: number;
+	referenceKind: 'analytic' | 'numerical-estimate';
+	referenceMethod: string;
+	exact: number | null;
 	approximation: number;
 	error: number;
-	relativeError: number;
+	relativeError: number | null;
 	stepDetails: StepDetail[];
 	needsEvenN: boolean;
 }

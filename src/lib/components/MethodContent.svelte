@@ -18,6 +18,7 @@
 			constraints: string[];
 			formulaLatex: string;
 			compositeLatex: string;
+			basicLatex: string;
 			errorLatex: string;
 			summary: string;
 		}
@@ -31,11 +32,11 @@
 				'Fungsi f(x) harus kontinu pada interval [a, b].',
 			],
 			formulaLatex:
-				'\\int_a^b f(x)\\,dx \\approx \\frac{h}{2} \\left[ f(x_0) + 2 f(x_1) + 2 f(x_2) + \\dots + 2 f(x_{n-1}) + f(x_n) \\right]',
+				'\\int_a^b f(x)\\,dx \\approx \\frac{h}{2} \\left[ f(x_0) + 2 \\sum_{i=1}^{n-1} f(x_i) + f(x_n) \\right]',
 			compositeLatex: 'h = \\frac{b - a}{n}, \\quad x_i = a + i \\cdot h',
-			errorLatex: 'E_T = -\\frac{(b - a)^3}{12 n^2} f\'\'(\\xi), \\quad \\text{dimana } \\xi \\in [a, b]',
-			summary:
-				'Interpolasi linear antara titik-titik berdampingan membentuk trapesium, menghasilkan pendekatan geometris orde pertama.',
+			basicLatex: 'T_1 = \\frac{b-a}{2}\\left[f(a)+f(b)\\right], \\quad n=1',
+			errorLatex: 'E_T = -\\frac{(b - a)^3}{12 n^2} f^{(2)}(\\xi) = O(h^2), \\quad \\xi \\in [a, b]',
+			summary: 'Rumus single memakai n=1. Aturan trapesium komposit memiliki galat global orde O(h²).',
 		},
 		simpson13: {
 			title: 'Metode Simpson 1/3',
@@ -48,9 +49,9 @@
 			formulaLatex:
 				'\\int_a^b f(x)\\,dx \\approx \\frac{h}{3} \\left[ f(x_0) + 4\\sum_{i\\text{ ganjil}} f(x_i) + 2\\sum_{i\\text{ genap}} f(x_i) + f(x_n) \\right]',
 			compositeLatex: 'h = \\frac{b - a}{n}, \\quad n \\text{ harus genap}',
-			errorLatex: 'E_S = -\\frac{(b - a)^5}{180 n^4} f^{(4)}(\\xi), \\quad \\text{dimana } \\xi \\in [a, b]',
-			summary:
-				'Polinomial derajat dua dipasangkan pada tiap 3 titik berurutan, memberikan hasil eksak untuk polinomial hingga derajat 3.',
+			basicLatex: 'S_2 = \\frac{h}{3}\\left[f(x_0)+4f(x_1)+f(x_2)\\right], \\quad n=2',
+			errorLatex: 'E_S = -\\frac{(b - a)^5}{180 n^4} f^{(4)}(\\xi), \\quad \\xi \\in [a, b]',
+			summary: 'Aturan dasar memakai n=2; aturan komposit memerlukan n genap. Eksak untuk polinomial berderajat hingga 3.',
 		},
 		simpson38: {
 			title: 'Metode Simpson 3/8',
@@ -61,11 +62,11 @@
 				'Fungsi f(x) harus memiliki turunan keempat yang kontinu.',
 			],
 			formulaLatex:
-				'\\int_a^b f(x)\\,dx \\approx \\frac{3h}{8} \\left[ f(x_0) + 3 f(x_1) + 3 f(x_2) + 2 f(x_3) + \\dots + f(x_n) \\right]',
+				'\\int_a^b f(x)\\,dx \\approx \\frac{3h}{8} \\left[ f(x_0) + 3\\sum_{i\\not\\equiv 0 \\pmod 3} f(x_i) + 2\\sum_{i\\equiv 0 \\pmod 3} f(x_i) + f(x_n) \\right]',
 			compositeLatex: 'h = \\frac{b - a}{n}, \\quad n \\text{ harus kelipatan 3}',
-			errorLatex: 'E_{S3/8} = -\\frac{3(b - a)^5}{80 n^4} f^{(4)}(\\xi), \\quad \\text{dimana } \\xi \\in [a, b]',
-			summary:
-				'Polinomial derajat tiga dipasangkan pada kelompok 4 titik berurutan, sangat berguna saat jumlah subinterval habis dibagi 3.',
+			basicLatex: 'S_{3/8} = \\frac{3h}{8}\\left[f(x_0)+3f(x_1)+3f(x_2)+f(x_3)\\right], \\quad n=3',
+			errorLatex: 'E_{S3/8} = -\\frac{(b - a)^5}{80 n^4} f^{(4)}(\\xi), \\quad \\xi \\in [a, b]',
+			summary: 'Aturan dasar memakai n=3; aturan komposit memerlukan n kelipatan 3. Eksak untuk polinomial berderajat hingga 3.',
 		},
 		midpoint: {
 			title: 'Metode Titik Tengah (Midpoint Rule)',
@@ -76,8 +77,9 @@
 				'Fungsi f(x) harus kontinu pada interval [a, b].',
 			],
 			formulaLatex:
-				'\\int_a^b f(x)\\,dx \\approx h \\sum_{i=0}^{n-1} f\\left(\\frac{x_i + x_{i+1}}{2}\\right)',
-			compositeLatex: 'h = \\frac{b - a}{n}, \\quad x_i = a + i \\cdot h',
+				'M_n = \\Delta x \\sum_{i=1}^{n} f(m_i), \\quad m_i = a + \\left(i-\\frac{1}{2}\\right)\\Delta x',
+			compositeLatex: '\\Delta x = \\frac{b - a}{n}, \\quad m_i = a + \\left(i-\\frac{1}{2}\\right)\\Delta x',
+			basicLatex: 'M_n = \\sum_{i=1}^{n} f(m_i)\\Delta x',
 			errorLatex: 'E_M = \\frac{(b - a)^3}{24 n^2} f\'\'(\\xi), \\quad \\text{dimana } \\xi \\in [a, b]',
 			summary:
 				'Jumlah Riemann persegi panjang titik tengah umumnya memberikan galat dua kali lebih kecil dibanding aturan trapesium untuk ukuran langkah yang sama.',
@@ -119,9 +121,10 @@
 			<div class="bg-muted/40 p-4 rounded-lg space-y-3 border">
 				<div>
 					<span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-						Rumus Komposit
+						Rumus Dasar & Komposit
 					</span>
 					<div class="overflow-x-auto py-2">
+						<MathRender latex={detail.basicLatex} displayMode={false} />
 						<MathRender latex={detail.formulaLatex} displayMode={true} />
 					</div>
 				</div>

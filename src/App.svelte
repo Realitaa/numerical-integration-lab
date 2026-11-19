@@ -61,10 +61,13 @@
 		b: 2,
 		n: 4,
 		h: 0.5,
-		exact: 2.6666666666666665,
+		referenceValue: 8 / 3,
+		referenceKind: 'analytic',
+		referenceMethod: 'Antiturunan analitik',
+		exact: 8 / 3,
 		approximation: 2.75,
-		error: 0.08333333333333348,
-		relativeError: 0.03125,
+		error: 1 / 12,
+		relativeError: 1 / 32,
 		stepDetails: [],
 		needsEvenN: false,
 	});
@@ -106,10 +109,12 @@
 			<CodeTabs method={currentMethod} />
 
 			<!-- Interactive Calculator (C) -->
-			<NumericalCalculator
-				method={currentMethod}
-				onResultChange={handleResultChange}
-			/>
+			{#key currentMethod}
+				<NumericalCalculator
+					method={currentMethod}
+					onResultChange={handleResultChange}
+				/>
+			{/key}
 
 			<!-- Graphical Visualization (D) -->
 			<NumericalChart

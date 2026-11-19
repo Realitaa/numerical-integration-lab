@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <functional>
+#include <iomanip>
 
 /**
  * Approximates the integral of f from a to b using the trapezoidal rule

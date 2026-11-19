@@ -2,6 +2,7 @@
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+#include <iomanip>
 
 /**
  * Approximates the integral of f from a to b using Simpson's 3/8 rule
